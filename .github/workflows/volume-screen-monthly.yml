@@ -1,0 +1,26 @@
+name: Volume Screen Monthly Validation
+on:
+  workflow_dispatch:
+jobs:
+  monthly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt
+      - name: Monthly volume screen and matched benchmark
+        env:
+          KRX_ID: ${{ secrets.KRX_ID }}
+          KRX_PW: ${{ secrets.KRX_PW }}
+        run: python volume_screen_monthly.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: volume-screen-monthly-results
+          path: outputs_monthly/
+          if-no-files-found: warn
