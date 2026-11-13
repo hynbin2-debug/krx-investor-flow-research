@@ -1,0 +1,33 @@
+name: Volume Screen Market Benchmark
+on:
+  workflow_dispatch:
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt
+      - uses: actions/download-artifact@v4
+        with:
+          name: volume-screen-historical-results
+          run-id: 43378050138
+          github-token: ${{ github.token }}
+          path: input_artifact/
+      - name: Compare matched market index returns
+        env:
+          KRX_ID: ${{ secrets.KRX_ID }}
+          KRX_PW: ${{ secrets.KRX_PW }}
+        run: python volume_screen_benchmark.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: volume-screen-market-benchmark
+          path: outputs_benchmark/
+          if-no-files-found: warn
