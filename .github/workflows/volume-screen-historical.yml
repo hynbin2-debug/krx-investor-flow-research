@@ -1,0 +1,26 @@
+name: Volume Screen Historical Pilot
+on:
+  workflow_dispatch:
+jobs:
+  historical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt
+      - name: Historical screening and forward returns
+        env:
+          KRX_ID: ${{ secrets.KRX_ID }}
+          KRX_PW: ${{ secrets.KRX_PW }}
+        run: python volume_screen_historical.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: volume-screen-historical-results
+          path: outputs_volume/
+          if-no-files-found: warn
