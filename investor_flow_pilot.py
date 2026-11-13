@@ -12,7 +12,7 @@ from pykrx import stock
 
 OUT = Path("outputs")
 OUT.mkdir(exist_ok=True)
-START, END = "20260101", "20261031"
+START, END = "20260101", "20261030"
 WINDOWS = (5, 10, 20)
 WAIT = 0.4
 
@@ -62,13 +62,14 @@ def fetch_one(ticker, name):
     flow = stock.get_market_trading_volume_by_date("20251101", "20261130", ticker)
     time.sleep(WAIT)
     required_price = ["종가", "거래량"]
-    required_flow = ["외국인", "기관합계"]
+    foreign_col = "외국인합계" if "외국인합계" in flow.columns else "외국인"
+    required_flow = [foreign_col, "기관합계"]
     if prices.empty or flow.empty:
         raise ValueError("empty prices or flow")
     if any(c not in prices for c in required_price) or any(c not in flow for c in required_flow):
         raise ValueError(f"missing required columns: {list(prices.columns)} / {list(flow.columns)}")
     p = to_numeric(prices[required_price].copy(), required_price)
-    f = to_numeric(flow[required_flow].copy(), required_flow)
+    f = to_numeric(flow[required_flow].copy(), required_flow).rename(columns={foreign_col: "외국인"})
     df = p.join(f, how="inner").sort_index()
     df = df.loc[~df.index.duplicated(keep=False)].dropna()
     df = df[(df["종가"] > 0) & (df["거래량"] >= 0)]
