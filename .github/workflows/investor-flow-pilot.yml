@@ -1,0 +1,32 @@
+name: Investor Flow Pilot
+on:
+  workflow_dispatch:
+    inputs:
+      sample_size:
+        description: "Number of stocks (10-100)"
+        required: false
+        default: "30"
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt
+      - name: Run pilot
+        env:
+          SAMPLE_SIZE: ${{ inputs.sample_size }}
+          KRX_ID: ${{ secrets.KRX_ID }}
+          KRX_PASSWORD: ${{ secrets.KRX_PASSWORD }}
+        run: python investor_flow_pilot.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: investor-flow-pilot-results
+          path: outputs/
+          if-no-files-found: warn
