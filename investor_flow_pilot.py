@@ -18,16 +18,29 @@ WAIT = 0.4
 
 
 def krx_login():
-    """Retained login hook. Do not claim authentication without a verified API."""
-    session = requests.Session()
-    session.headers.update({"User-Agent": "Mozilla/5.0"})
-    user = os.getenv("KRX_ID")
-    password = os.getenv("KRX_PASSWORD")
-    if user or password:
-        print("KRX credentials supplied; authenticated login endpoint not verified. Public pykrx access only.")
-    else:
-        print("KRX login hook retained; using public pykrx data without credentials.")
-    return session
+    """Validate credential presence; pykrx does not establish authenticated login."""
+    missing = [key for key in ("KRX_ID", "KRX_PW") if not os.getenv(key)]
+    if missing:
+        raise RuntimeError("KRX 인증 환경변수 누락: " + ", ".join(missing)
+                           + " (새 저장소 Actions secrets에 각각 등록 필요)")
+    print("KRX_ID/KRX_PW 설정 확인됨; 실제 KRX 서버 로그인 성공은 미검증", flush=True)
+    return requests.Session()
+
+
+def krx_call(fn, *args, **kwargs):
+    last = None
+    for attempt in range(3):
+        try:
+            result = fn(*args, **kwargs)
+            if result is None or (hasattr(result, "empty") and result.empty):
+                raise ValueError("KRX empty response")
+            return result
+        except Exception as exc:
+            last = exc
+            print(f"KRX request retry {attempt + 1}/3: {type(exc).__name__}: {exc}", flush=True)
+            if attempt < 2:
+                time.sleep(4 * (attempt + 1))
+    raise RuntimeError(f"KRX data retrieval failed after 3 attempts: {last}")
 
 
 def to_numeric(frame, columns):
@@ -37,7 +50,7 @@ def to_numeric(frame, columns):
 
 
 def select_tickers(end, n):
-    cap = stock.get_market_cap_by_ticker(end, market="ALL")
+    cap = krx_call(stock.get_market_cap_by_ticker, end, market="ALL")
     if cap.empty or "시가총액" not in cap:
         raise RuntimeError("KRX market cap response missing")
     cap = cap.sort_values("시가총액", ascending=False)
@@ -57,9 +70,9 @@ def select_tickers(end, n):
 
 def fetch_one(ticker, name):
     # Extra history for lookback and forward evaluation; no interpolation of missing days.
-    prices = stock.get_market_ohlcv_by_date("20251101", "20261130", ticker)
+    prices = krx_call(stock.get_market_ohlcv_by_date, "20251101", "20261130", ticker)
     time.sleep(WAIT)
-    flow = stock.get_market_trading_volume_by_date("20251101", "20261130", ticker)
+    flow = krx_call(stock.get_market_trading_volume_by_date, "20251101", "20261130", ticker, on="순매수")
     time.sleep(WAIT)
     required_price = ["종가", "거래량"]
     foreign_col = "외국인합계" if "외국인합계" in flow.columns else "외국인"
@@ -117,12 +130,12 @@ def summarize(panel):
 
 
 def main():
-    krx_login()
     sample_size = max(10, min(100, int(os.getenv("SAMPLE_SIZE", "30"))))
     diag = {"started_utc": datetime.utcnow().isoformat(), "requested": sample_size,
             "errors": {}, "data_source": "pykrx KRX", "sampling": "market cap top, not full market"}
     frames = []
     try:
+        krx_login()
         tickers = select_tickers(END, sample_size)
         diag["selected"] = tickers
         for i, (ticker, name) in enumerate(tickers, 1):
