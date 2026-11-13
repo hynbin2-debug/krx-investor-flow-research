@@ -22,7 +22,7 @@ jobs:
         env:
           SAMPLE_SIZE: ${{ inputs.sample_size }}
           KRX_ID: ${{ secrets.KRX_ID }}
-          KRX_PASSWORD: ${{ secrets.KRX_PASSWORD }}
+          KRX_PW: ${{ secrets.KRX_PW }}
         run: python investor_flow_pilot.py
       - uses: actions/upload-artifact@v4
         if: always()
