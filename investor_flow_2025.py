@@ -12,7 +12,8 @@ from pykrx import stock
 
 OUT = Path("outputs_2025")
 OUT.mkdir(exist_ok=True)
-START, END = "20250102", "20251031"\nUNIVERSE_DATE = "20241230"
+START, END = "20250102", "20251031"
+UNIVERSE_DATE = "20241230"
 WINDOWS = (5, 10, 20)
 WAIT = 0.4
 
