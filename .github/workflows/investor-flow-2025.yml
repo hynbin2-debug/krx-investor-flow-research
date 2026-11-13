@@ -1,0 +1,32 @@
+name: Investor Flow 2025 Holdout
+on:
+  workflow_dispatch:
+    inputs:
+      sample_size:
+        description: "2024 year-end top market-cap sample (10-100)"
+        required: false
+        default: "30"
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt
+      - name: Run 2025 independent validation
+        env:
+          SAMPLE_SIZE: ${{ inputs.sample_size }}
+          KRX_ID: ${{ secrets.KRX_ID }}
+          KRX_PW: ${{ secrets.KRX_PW }}
+        run: python investor_flow_2025.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: investor-flow-2025-results
+          path: outputs_2025/
+          if-no-files-found: warn
